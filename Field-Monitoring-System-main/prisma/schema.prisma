@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Note: For pending agents, this can be a random string until activated
+  name      String?
+  role      String   @default("AGENT") 
+  
+  // New Management Fields
+  idNumber     String?
+  designation  String?   // Field of designation
+  status       String    @default("ACTIVE") // ACTIVE, SUSPENDED, PENDING
+  image        String?   // Cloudinary URL
+  
+  // Activation / Reset Fields
+  activateToken        String?   @unique
+  activateTokenExpires DateTime?
+
+  // Relations for dual-agent support
+  supervisorFields Field[] @relation("SupervisorFields")
+  assistantFields  Field[] @relation("AssistantFields")
+  
+  updates   FieldUpdate[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Field {
+  id              String        @id @default(cuid())
+  name            String
+  cropType        String
+  plantingDate    DateTime
+  stage           String        @default("PLANTED")
+  
+  // Dual Agent Roles
+  supervisor      User?         @relation("SupervisorFields", fields: [supervisorId], references: [id])
+  supervisorId    String?
+  assistant       User?         @relation("AssistantFields", fields: [assistantId], references: [id])
+  assistantId     String?
+
+  updates         FieldUpdate[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model FieldUpdate {
+  id             String    @id @default(cuid())
+  field          Field     @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  fieldId        String
+  author         User      @relation(fields: [authorId], references: [id])
+  authorId       String
+  note           String
+  stageAtUpdate  String
+  createdAt      DateTime  @default(now())
+}
